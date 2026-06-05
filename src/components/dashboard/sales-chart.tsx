@@ -157,11 +157,7 @@ export function SalesChart() {
                   />
                 }
               />
-              <Bar
-                dataKey="sales"
-                fill="var(--color-sales)"
-                radius={[6, 6, 0, 0]}
-              />
+              <Bar dataKey="sales" fill="var(--color-sales)" radius={0} />
             </BarChart>
           </ChartContainer>
         )}

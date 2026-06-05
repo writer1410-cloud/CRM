@@ -61,14 +61,14 @@ export default function DashboardPage() {
           value={formatCurrency(currentSales)}
           icon={DollarSign}
           change={-12.4}
-          accentClassName="bg-emerald-100 text-emerald-600 dark:bg-emerald-950"
+          accentClassName="bg-primary/10 text-primary"
         />
         <SummaryCard
           title="新規顧客数"
           value={`${newCustomers} 件`}
           icon={UserPlus}
           change={8.1}
-          accentClassName="bg-blue-100 text-blue-600 dark:bg-blue-950"
+          accentClassName="bg-neon/20 text-lime-600 dark:text-lime-400"
         />
         <SummaryCard
           title="在庫アラート"

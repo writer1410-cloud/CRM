@@ -51,7 +51,7 @@ export function Header() {
         <SheetContent side="left" className="w-64 p-0">
           <SheetHeader className="border-b">
             <SheetTitle className="flex items-center gap-2">
-              <div className="bg-sidebar-primary text-sidebar-primary-foreground flex size-7 items-center justify-center rounded-lg">
+              <div className="bg-neon text-neon-foreground flex size-7 items-center justify-center">
                 <LayoutGrid className="size-4" />
               </div>
               {appName}

@@ -8,7 +8,7 @@ export function Sidebar() {
   return (
     <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border hidden w-64 shrink-0 flex-col border-r lg:flex">
       <div className="border-sidebar-border flex h-16 items-center gap-2 border-b px-6">
-        <div className="bg-sidebar-primary text-sidebar-primary-foreground flex size-8 items-center justify-center rounded-lg">
+        <div className="bg-neon text-neon-foreground flex size-8 items-center justify-center">
           <LayoutGrid className="size-5" />
         </div>
         <Link href="/dashboard" className="text-lg font-semibold tracking-tight">
