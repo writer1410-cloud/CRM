@@ -168,6 +168,66 @@ export const weeklySales: WeeklySales[] = [
   { week: "第4週", sales: 1420000 },
 ];
 
+// Daily sales for this week vs. the previous week (values in yen).
+export interface DailySalesPoint {
+  day: string;
+  thisWeek: number;
+  lastWeek: number;
+}
+
+export const weeklySalesTrend: DailySalesPoint[] = [
+  { day: "月", thisWeek: 75000, lastWeek: 122000 },
+  { day: "火", thisWeek: 118000, lastWeek: 197000 },
+  { day: "水", thisWeek: 99000, lastWeek: 150000 },
+  { day: "木", thisWeek: 251000, lastWeek: 301000 },
+  { day: "金", thisWeek: 170000, lastWeek: 199000 },
+  { day: "土", thisWeek: 349000, lastWeek: 300000 },
+  { day: "日", thisWeek: 248000, lastWeek: 190000 },
+];
+
+export const salesSnapshot = {
+  today: 230111,
+  todayChange: 8.3,
+  thisWeekAvg: 210898,
+  thisWeekAvgChange: -18.6,
+  lastWeekAvg: 250100,
+};
+
+// ---------- Customer support history ----------
+
+export type SupportCategory = "service" | "billing" | "defect" | "other";
+export type SupportState = "open" | "resolved" | "alert";
+
+export interface SupportTicket {
+  id: string;
+  company: string;
+  department?: string;
+  contact: string;
+  category: SupportCategory;
+  date: string; // ISO date
+  calls: number;
+  mails: number;
+  state: SupportState;
+}
+
+export const supportCategoryLabels: Record<SupportCategory, string> = {
+  service: "サービス",
+  billing: "料金",
+  defect: "不具合",
+  other: "その他",
+};
+
+export const supportHistory: SupportTicket[] = [
+  { id: "SUP-01", company: "ACC株式会社", department: "営業部", contact: "田中様", category: "service", date: "2019-12-27", calls: 0, mails: 1, state: "open" },
+  { id: "SUP-02", company: "Bring corp", department: "営業部", contact: "大森様", category: "service", date: "2019-12-27", calls: 0, mails: 1, state: "open" },
+  { id: "SUP-03", company: "株式会社アジャスト", contact: "吉田様", category: "service", date: "2019-12-26", calls: 0, mails: 1, state: "open" },
+  { id: "SUP-04", company: "株式会社インターバル", department: "総務部", contact: "佐藤様", category: "billing", date: "2019-12-25", calls: 1, mails: 0, state: "alert" },
+  { id: "SUP-05", company: "カミング株式会社", contact: "内藤様", category: "other", date: "2019-12-22", calls: 0, mails: 3, state: "resolved" },
+  { id: "SUP-06", company: "株式会社サクセス", department: "代表", contact: "庄司様", category: "billing", date: "2019-12-22", calls: 0, mails: 1, state: "resolved" },
+  { id: "SUP-07", company: "株式会社システック", department: "開発", contact: "横川様", category: "defect", date: "2019-12-19", calls: 1, mails: 6, state: "resolved" },
+  { id: "SUP-08", company: "株式会社ソラリス", contact: "広瀬様", category: "service", date: "2019-12-18", calls: 0, mails: 2, state: "open" },
+];
+
 // ---------- Derived helpers ----------
 
 export function getCurrentMonthSales() {

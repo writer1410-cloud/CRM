@@ -2,24 +2,25 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ArrowRight,
+  ChevronDown,
   DollarSign,
   ListTodo,
   Package,
   UserPlus,
 } from "lucide-react";
 
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import {
   getCurrentMonthSales,
   getLowStockProducts,
   getNewCustomersThisMonth,
   getOpenTasks,
-  tasks,
   taskPriorityLabels,
   type TaskPriority,
 } from "@/lib/mock-data";
 import { SummaryCard } from "@/components/dashboard/summary-card";
-import { SalesChart } from "@/components/dashboard/sales-chart";
+import { WeeklySalesCard } from "@/components/dashboard/weekly-sales-card";
+import { SupportHistory } from "@/components/dashboard/support-history";
 import { TaskStatusChart } from "@/components/dashboard/task-status-chart";
 import {
   Card,
@@ -53,7 +54,23 @@ export default function DashboardPage() {
     .slice(0, 5);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
+      {/* Action row */}
+      <div className="flex items-center justify-end">
+        <Button variant="outline" className="gap-2">
+          出力する対象を選択してください
+          <ChevronDown className="size-4" />
+        </Button>
+      </div>
+
+      {/* Centerpiece: weekly sales + support history */}
+      <div className="grid gap-5 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <WeeklySalesCard />
+        </div>
+        <SupportHistory />
+      </div>
+
       {/* Summary cards */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
@@ -61,42 +78,36 @@ export default function DashboardPage() {
           value={formatCurrency(currentSales)}
           icon={DollarSign}
           change={-12.4}
-          accentClassName="bg-primary/10 text-primary"
+          accentClassName="bg-brand-blue/15 text-brand-blue"
         />
         <SummaryCard
           title="新規顧客数"
           value={`${newCustomers} 件`}
           icon={UserPlus}
           change={8.1}
-          accentClassName="bg-neon/20 text-lime-600 dark:text-lime-400"
+          accentClassName="bg-brand-green/15 text-brand-green"
         />
         <SummaryCard
           title="在庫アラート"
           value={`${lowStock.length} 件`}
           icon={Package}
           hint="しきい値を下回る商品"
-          accentClassName="bg-amber-100 text-amber-600 dark:bg-amber-950"
+          accentClassName="bg-brand-orange/15 text-brand-orange"
         />
         <SummaryCard
           title="未完了タスク"
           value={`${openTasks.length} 件`}
           icon={ListTodo}
           hint="未着手・進行中の合計"
-          accentClassName="bg-violet-100 text-violet-600 dark:bg-violet-950"
+          accentClassName="bg-brand-teal/15 text-brand-teal"
         />
       </div>
 
-      {/* Charts */}
+      {/* Lower analytics: task status + upcoming tasks + low stock */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <SalesChart />
-        </div>
         <TaskStatusChart />
-      </div>
 
-      {/* Lower section: upcoming tasks + low stock alerts */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <div className="space-y-1.5">
               <CardTitle>直近のタスク</CardTitle>
@@ -104,7 +115,6 @@ export default function DashboardPage() {
             </div>
             <Button variant="ghost" size="sm" asChild>
               <Link href="/tasks">
-                すべて表示
                 <ArrowRight className="size-4" />
               </Link>
             </Button>
@@ -113,7 +123,7 @@ export default function DashboardPage() {
             {upcomingTasks.map((task) => (
               <div
                 key={task.id}
-                className="hover:bg-muted/50 flex items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors"
+                className="hover:bg-muted/50 flex items-center justify-between gap-3 rounded-md px-2 py-2.5 transition-colors"
               >
                 <div className="flex min-w-0 flex-col">
                   <span className="truncate text-sm font-medium">
@@ -123,14 +133,9 @@ export default function DashboardPage() {
                     担当: {task.assignee}
                   </span>
                 </div>
-                <div className="flex shrink-0 items-center gap-3">
-                  <Badge variant={priorityVariant[task.priority]}>
-                    {taskPriorityLabels[task.priority]}
-                  </Badge>
-                  <span className="text-muted-foreground w-20 text-right text-xs">
-                    {formatDate(task.dueDate)}
-                  </span>
-                </div>
+                <Badge variant={priorityVariant[task.priority]}>
+                  {taskPriorityLabels[task.priority]}
+                </Badge>
               </div>
             ))}
           </CardContent>
@@ -140,7 +145,7 @@ export default function DashboardPage() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <div className="space-y-1.5">
               <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="text-amber-500 size-4" />
+                <AlertTriangle className="text-brand-orange size-4" />
                 在庫アラート
               </CardTitle>
               <CardDescription>補充が必要な商品</CardDescription>
@@ -155,7 +160,7 @@ export default function DashboardPage() {
             {lowStock.slice(0, 5).map((product) => (
               <div
                 key={product.id}
-                className="flex items-center justify-between gap-3 rounded-lg px-2 py-2.5"
+                className="flex items-center justify-between gap-3 rounded-md px-2 py-2.5"
               >
                 <div className="flex min-w-0 flex-col">
                   <span className="truncate text-sm font-medium">
@@ -166,26 +171,23 @@ export default function DashboardPage() {
                   </span>
                 </div>
                 <Badge
-                  variant={product.stock <= product.threshold / 2 ? "destructive" : "warning"}
+                  variant={
+                    product.stock <= product.threshold / 2
+                      ? "destructive"
+                      : "warning"
+                  }
                 >
                   残 {product.stock}
                 </Badge>
               </div>
             ))}
-            {lowStock.length === 0 && (
-              <p className="text-muted-foreground py-8 text-center text-sm">
-                在庫アラートはありません
-              </p>
-            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Helper note (mock data) */}
       <p className="text-muted-foreground text-center text-xs">
         ※ 現在はモックデータを表示しています。データベース接続（Prisma +
-        PostgreSQL）は後続ステップで実装予定です。 全{" "}
-        {tasks.length} タスク中 {openTasks.length} 件が未完了。
+        PostgreSQL）は後続ステップで実装予定です。
       </p>
     </div>
   );

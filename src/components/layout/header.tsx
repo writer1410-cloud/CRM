@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, LayoutGrid, Menu, Search } from "lucide-react";
+import { Bell, ChevronDown, Hexagon, Menu, Search } from "lucide-react";
 
 import { appName, navItems } from "@/lib/nav";
 import { Button } from "@/components/ui/button";
@@ -39,7 +39,7 @@ export function Header() {
   );
 
   return (
-    <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-30 flex h-16 items-center gap-4 border-b px-4 backdrop-blur lg:px-6">
+    <header className="bg-card sticky top-0 z-30 flex h-16 items-center gap-4 border-b px-4 lg:px-6">
       {/* Mobile menu */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetTrigger asChild>
@@ -48,11 +48,14 @@ export function Header() {
             <span className="sr-only">メニューを開く</span>
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-64 p-0">
-          <SheetHeader className="border-b">
-            <SheetTitle className="flex items-center gap-2">
-              <div className="bg-neon text-neon-foreground flex size-7 items-center justify-center">
-                <LayoutGrid className="size-4" />
+        <SheetContent
+          side="left"
+          className="bg-sidebar text-sidebar-foreground w-64 border-none p-0"
+        >
+          <SheetHeader className="border-sidebar-border border-b">
+            <SheetTitle className="flex items-center gap-3 text-white">
+              <div className="flex size-8 items-center justify-center rounded-full border-2 border-white/80">
+                <Hexagon className="size-4" />
               </div>
               {appName}
             </SheetTitle>
@@ -61,16 +64,35 @@ export function Header() {
         </SheetContent>
       </Sheet>
 
-      <div className="flex flex-col">
-        <h1 className="text-base font-semibold lg:text-lg">
-          {currentPage?.title ?? appName}
-        </h1>
-        {currentPage?.description && (
-          <p className="text-muted-foreground hidden text-xs sm:block">
-            {currentPage.description}
-          </p>
+      {/* Page title */}
+      <div className="flex items-center gap-2">
+        {currentPage?.icon && (
+          <currentPage.icon className="text-primary size-5" />
         )}
+        <div className="flex flex-col">
+          <h1 className="text-base leading-tight font-semibold lg:text-lg">
+            {currentPage?.title ?? appName}
+          </h1>
+          {currentPage?.description && (
+            <p className="text-muted-foreground hidden text-xs sm:block">
+              {currentPage.description}
+            </p>
+          )}
+        </div>
       </div>
+
+      {/* Custom menu dropdowns (decorative, like the reference) */}
+      <nav className="ml-4 hidden items-center gap-1 xl:flex">
+        {["カスタムメニュー", "カスタムメニュー"].map((label, i) => (
+          <button
+            key={i}
+            className="text-muted-foreground hover:bg-accent hover:text-foreground flex items-center gap-1 rounded-md px-3 py-1.5 text-sm transition-colors"
+          >
+            {label}
+            <ChevronDown className="size-3.5" />
+          </button>
+        ))}
+      </nav>
 
       <div className="ml-auto flex items-center gap-2">
         <div className="relative hidden md:block">
