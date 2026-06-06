@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { prisma } from "@/lib/prisma";
 import { sales as mockSales, type Sale, type SaleStatus } from "@/lib/mock-data";
 import { SalesView } from "@/components/sales/sales-view";
