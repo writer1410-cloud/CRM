@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { AlertTriangle, Search } from "lucide-react";
 
 import { cn, formatCurrency, formatNumber } from "@/lib/utils";
-import { products as initialProducts, type Product } from "@/lib/mock-data";
+import { type Product } from "@/lib/mock-data";
 import {
   Card,
   CardContent,
@@ -49,18 +49,21 @@ function StockBadge({ level }: { level: StockLevel }) {
   return <Badge variant={variant}>{stockLevelLabels[level]}</Badge>;
 }
 
-export function InventoryView() {
-  const [products] = useState<Product[]>(initialProducts);
+interface InventoryViewProps {
+  initialProducts: Product[];
+}
+
+export function InventoryView({ initialProducts }: InventoryViewProps) {
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
   const categories = useMemo(
-    () => Array.from(new Set(products.map((p) => p.category))),
-    [products]
+    () => Array.from(new Set(initialProducts.map((p) => p.category))),
+    [initialProducts]
   );
 
   const filtered = useMemo(() => {
-    return products.filter((p) => {
+    return initialProducts.filter((p) => {
       const q = query.toLowerCase();
       const matchesQuery =
         p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q);
@@ -68,12 +71,10 @@ export function InventoryView() {
         categoryFilter === "all" || p.category === categoryFilter;
       return matchesQuery && matchesCategory;
     });
-  }, [products, query, categoryFilter]);
+  }, [initialProducts, query, categoryFilter]);
 
   const totalCount = filtered.length;
-  const lowStockCount = filtered.filter(
-    (p) => stockLevel(p) !== "ok"
-  ).length;
+  const lowStockCount = filtered.filter((p) => stockLevel(p) !== "ok").length;
   const inventoryValue = filtered.reduce(
     (sum, p) => sum + p.stock * p.price,
     0

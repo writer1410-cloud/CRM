@@ -1,11 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useOptimistic, useMemo, useState, useTransition } from "react";
 import { Search } from "lucide-react";
 
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import {
-  sales as initialSales,
   saleStatusLabels,
   type Sale,
   type SaleStatus,
@@ -33,6 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { NewSaleDialog, type NewSaleValues } from "./new-sale-dialog";
+import { createSaleAction } from "@/app/actions/sales";
 
 const statusDot: Record<SaleStatus, string> = {
   paid: "bg-brand-green",
@@ -50,25 +50,36 @@ function StatusBadge({ status }: { status: SaleStatus }) {
   );
 }
 
-export function SalesView() {
-  const [sales, setSales] = useState<Sale[]>(initialSales);
+interface SalesViewProps {
+  initialSales: Sale[];
+}
+
+export function SalesView({ initialSales }: SalesViewProps) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<SaleStatus | "all">("all");
+  const [isPending, startTransition] = useTransition();
+
+  // useOptimistic syncs automatically with initialSales when server re-renders
+  const [optimisticSales, addOptimisticSale] = useOptimistic(
+    initialSales,
+    (state: Sale[], newSale: Sale) => [newSale, ...state]
+  );
 
   function handleCreate(values: NewSaleValues) {
-    const maxNumber = sales.reduce((max, sale) => {
+    const maxNumber = optimisticSales.reduce((max, sale) => {
       const n = Number(sale.id.replace(/\D/g, ""));
       return Number.isNaN(n) ? max : Math.max(max, n);
     }, 1000);
-    const newSale: Sale = {
-      id: `INV-${maxNumber + 1}`,
-      ...values,
-    };
-    setSales((prev) => [newSale, ...prev]);
+    const optimistic: Sale = { id: `INV-${maxNumber + 1}`, ...values };
+
+    startTransition(async () => {
+      addOptimisticSale(optimistic);
+      await createSaleAction(values);
+    });
   }
 
   const filtered = useMemo(() => {
-    return sales.filter((sale) => {
+    return optimisticSales.filter((sale) => {
       const matchesQuery = sale.customerName
         .toLowerCase()
         .includes(query.toLowerCase());
@@ -76,7 +87,7 @@ export function SalesView() {
         statusFilter === "all" || sale.status === statusFilter;
       return matchesQuery && matchesStatus;
     });
-  }, [sales, query, statusFilter]);
+  }, [optimisticSales, query, statusFilter]);
 
   const totalAmount = filtered.reduce((sum, s) => sum + s.amount, 0);
   const paidAmount = filtered
@@ -152,7 +163,7 @@ export function SalesView() {
                 ))}
               </SelectContent>
             </Select>
-            <NewSaleDialog onCreate={handleCreate} />
+            <NewSaleDialog onCreate={handleCreate} disabled={isPending} />
           </div>
         </CardHeader>
         <CardContent className="p-0">

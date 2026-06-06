@@ -1,11 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useOptimistic, useMemo, useState, useTransition } from "react";
 import { Mail, Phone, Search } from "lucide-react";
 
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import {
-  customers as initialCustomers,
   customerStatusLabels,
   type Customer,
   type CustomerStatus,
@@ -33,6 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { NewCustomerDialog, type NewCustomerValues } from "./new-customer-dialog";
+import { createCustomerAction } from "@/app/actions/customers";
 
 const statusDot: Record<CustomerStatus, string> = {
   active: "bg-brand-green",
@@ -50,34 +50,47 @@ function StatusBadge({ status }: { status: CustomerStatus }) {
   );
 }
 
-export function CustomersView() {
-  const [customerList, setCustomerList] = useState<Customer[]>(initialCustomers);
+interface CustomersViewProps {
+  initialCustomers: Customer[];
+}
+
+export function CustomersView({ initialCustomers }: CustomersViewProps) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<CustomerStatus | "all">("all");
+  const [isPending, startTransition] = useTransition();
+
+  const [optimisticCustomers, addOptimisticCustomer] = useOptimistic(
+    initialCustomers,
+    (state: Customer[], newCustomer: Customer) => [newCustomer, ...state]
+  );
 
   function handleCreate(values: NewCustomerValues) {
-    const maxNumber = customerList.reduce((max, c) => {
+    const maxNumber = optimisticCustomers.reduce((max, c) => {
       const n = Number(c.id.replace(/\D/g, ""));
       return Number.isNaN(n) ? max : Math.max(max, n);
     }, 10);
-    const newCustomer: Customer = {
+    const optimistic: Customer = {
       id: `CUS-${String(maxNumber + 1).padStart(3, "0")}`,
       totalSpent: 0,
       lastContact: new Date().toISOString().slice(0, 10),
       ...values,
     };
-    setCustomerList((prev) => [newCustomer, ...prev]);
+
+    startTransition(async () => {
+      addOptimisticCustomer(optimistic);
+      await createCustomerAction(values);
+    });
   }
 
   const filtered = useMemo(() => {
-    return customerList.filter((c) => {
+    return optimisticCustomers.filter((c) => {
       const matchesQuery =
         c.name.toLowerCase().includes(query.toLowerCase()) ||
         c.contactName.toLowerCase().includes(query.toLowerCase());
       const matchesStatus = statusFilter === "all" || c.status === statusFilter;
       return matchesQuery && matchesStatus;
     });
-  }, [customerList, query, statusFilter]);
+  }, [optimisticCustomers, query, statusFilter]);
 
   const totalCount = filtered.length;
   const activeCount = filtered.filter((c) => c.status === "active").length;
@@ -162,7 +175,7 @@ export function CustomersView() {
                 ))}
               </SelectContent>
             </Select>
-            <NewCustomerDialog onCreate={handleCreate} />
+            <NewCustomerDialog onCreate={handleCreate} disabled={isPending} />
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -204,9 +217,11 @@ export function CustomersView() {
                     <StatusBadge status={customer.status} />
                   </TableCell>
                   <TableCell className="text-right font-medium tabular-nums">
-                    {customer.totalSpent > 0
-                      ? formatCurrency(customer.totalSpent)
-                      : <span className="text-muted-foreground">—</span>}
+                    {customer.totalSpent > 0 ? (
+                      formatCurrency(customer.totalSpent)
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-muted-foreground pr-5">
                     {formatDate(customer.lastContact)}

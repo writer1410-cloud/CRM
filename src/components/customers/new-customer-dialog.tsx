@@ -34,9 +34,10 @@ export interface NewCustomerValues {
 
 interface NewCustomerDialogProps {
   onCreate: (values: NewCustomerValues) => void;
+  disabled?: boolean;
 }
 
-export function NewCustomerDialog({ onCreate }: NewCustomerDialogProps) {
+export function NewCustomerDialog({ onCreate, disabled = false }: NewCustomerDialogProps) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [contactName, setContactName] = useState("");
@@ -78,7 +79,7 @@ export function NewCustomerDialog({ onCreate }: NewCustomerDialogProps) {
       }}
     >
       <DialogTrigger asChild>
-        <Button className="gap-2">
+        <Button className="gap-2" disabled={disabled}>
           <Plus className="size-4" />
           新規顧客を登録
         </Button>

@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { CalendarDays, GripVertical } from "lucide-react";
 
 import { cn, formatDate } from "@/lib/utils";
 import {
-  tasks as initialTasks,
   taskStatusLabels,
   taskPriorityLabels,
   type Task,
@@ -13,10 +12,8 @@ import {
   type TaskPriority,
 } from "@/lib/mock-data";
 import { Badge } from "@/components/ui/badge";
-import {
-  Avatar,
-  AvatarFallback,
-} from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { updateTaskStatusAction } from "@/app/actions/tasks";
 
 const TODAY = "2026-06-06";
 
@@ -91,26 +88,43 @@ function TaskCard({
   );
 }
 
-export function TasksView() {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+interface TasksViewProps {
+  initialTasks: Task[];
+}
+
+export function TasksView({ initialTasks }: TasksViewProps) {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<TaskStatus | null>(null);
+  const [, startTransition] = useTransition();
+
+  const [optimisticTasks, updateOptimisticTask] = useOptimistic(
+    initialTasks,
+    (
+      state: Task[],
+      { id, status }: { id: string; status: TaskStatus }
+    ) => state.map((t) => (t.id === id ? { ...t, status } : t))
+  );
 
   function handleDrop(status: TaskStatus) {
-    if (draggedId) {
-      setTasks((prev) =>
-        prev.map((t) => (t.id === draggedId ? { ...t, status } : t))
-      );
-    }
+    if (!draggedId) return;
+
+    const id = draggedId;
     setDraggedId(null);
     setDragOverColumn(null);
+
+    startTransition(async () => {
+      updateOptimisticTask({ id, status });
+      await updateTaskStatusAction(id, status);
+    });
   }
 
   return (
     <div className="flex flex-col gap-5">
       <div className="grid items-start gap-4 lg:grid-cols-3">
         {columns.map((status) => {
-          const columnTasks = tasks.filter((t) => t.status === status);
+          const columnTasks = optimisticTasks.filter(
+            (t) => t.status === status
+          );
           return (
             <div
               key={status}
@@ -118,7 +132,9 @@ export function TasksView() {
                 e.preventDefault();
                 setDragOverColumn(status);
               }}
-              onDragLeave={() => setDragOverColumn((c) => (c === status ? null : c))}
+              onDragLeave={() =>
+                setDragOverColumn((c) => (c === status ? null : c))
+              }
               onDrop={() => handleDrop(status)}
               className={cn(
                 "bg-secondary/60 flex flex-col gap-3 border border-t-2 p-3 transition-colors",

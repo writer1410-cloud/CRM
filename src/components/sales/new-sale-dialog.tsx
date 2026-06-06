@@ -37,11 +37,12 @@ export interface NewSaleValues {
 
 interface NewSaleDialogProps {
   onCreate: (values: NewSaleValues) => void;
+  disabled?: boolean;
 }
 
 const TODAY = "2026-06-06";
 
-export function NewSaleDialog({ onCreate }: NewSaleDialogProps) {
+export function NewSaleDialog({ onCreate, disabled = false }: NewSaleDialogProps) {
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState(TODAY);
   const [customerName, setCustomerName] = useState("");
@@ -82,7 +83,7 @@ export function NewSaleDialog({ onCreate }: NewSaleDialogProps) {
       }}
     >
       <DialogTrigger asChild>
-        <Button className="gap-2">
+        <Button className="gap-2" disabled={disabled}>
           <Plus className="size-4" />
           新規売上を登録
         </Button>
