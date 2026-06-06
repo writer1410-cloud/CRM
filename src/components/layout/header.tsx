@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, ChevronDown, Hexagon, Menu, Search } from "lucide-react";
 
 import { appName, navItems } from "@/lib/nav";
+import { logoutAction } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -149,9 +149,13 @@ export function Header() {
             <DropdownMenuItem>プロフィール</DropdownMenuItem>
             <DropdownMenuItem>設定</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" asChild>
-              <Link href="/dashboard">ログアウト</Link>
-            </DropdownMenuItem>
+            <form action={logoutAction}>
+              <DropdownMenuItem variant="destructive" asChild>
+                <button type="submit" className="w-full">
+                  ログアウト
+                </button>
+              </DropdownMenuItem>
+            </form>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

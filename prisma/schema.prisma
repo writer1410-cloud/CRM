@@ -1,0 +1,111 @@
+// Prisma schema for Nexus CRM
+// -----------------------------------------------------------------------------
+// These models mirror the shapes currently served from src/lib/mock-data.ts so
+// the UI can be migrated from mock data to a real PostgreSQL database with
+// minimal changes. Run `npm run db:generate` to (re)generate the client and
+// `npm run db:seed` to load the demo data once DATABASE_URL points at a DB.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Auth ----------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String   @default("admin")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ---------- Customers ----------
+
+enum CustomerStatus {
+  lead
+  active
+  inactive
+  churned
+}
+
+model Customer {
+  id          String         @id
+  name        String
+  contactName String
+  email       String
+  phone       String
+  status      CustomerStatus @default(lead)
+  totalSpent  Int            @default(0)
+  lastContact DateTime
+  sales       Sale[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+// ---------- Sales ----------
+
+enum SaleStatus {
+  paid
+  pending
+  overdue
+  cancelled
+}
+
+model Sale {
+  id           String     @id
+  date         DateTime
+  customerName String
+  amount       Int
+  status       SaleStatus @default(pending)
+  customer     Customer?  @relation(fields: [customerId], references: [id])
+  customerId   String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+// ---------- Inventory ----------
+
+model Product {
+  id        String   @id
+  name      String
+  sku       String   @unique
+  stock     Int      @default(0)
+  threshold Int      @default(0)
+  price     Int      @default(0)
+  category  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------- Tasks ----------
+
+enum TaskStatus {
+  todo
+  in_progress
+  done
+}
+
+enum TaskPriority {
+  low
+  medium
+  high
+}
+
+model Task {
+  id          String       @id
+  title       String
+  description String
+  status      TaskStatus   @default(todo)
+  priority    TaskPriority @default(medium)
+  assignee    String
+  dueDate     DateTime
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
