@@ -6,13 +6,13 @@ import { SidebarNav } from "./sidebar-nav";
 
 export function Sidebar() {
   return (
-    <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border hidden w-64 shrink-0 flex-col border-r lg:flex">
+    <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border hidden w-64 shrink-0 flex-col border-r lg:sticky lg:top-0 lg:flex lg:h-screen">
       {/* Logo */}
       <Link
         href="/dashboard"
-        className="border-sidebar-border flex h-16 items-center gap-3 border-b px-5"
+        className="border-sidebar-border flex h-16 shrink-0 items-center gap-3 border-b px-5"
       >
-        <div className="flex size-9 items-center justify-center rounded-full border-2 border-white/80 text-white">
+        <div className="flex size-9 items-center justify-center rounded-none border-2 border-white/80 text-white">
           <Hexagon className="size-5" />
         </div>
         <div className="flex flex-col leading-tight">

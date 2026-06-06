@@ -39,11 +39,15 @@ export function Header() {
   );
 
   return (
-    <header className="bg-card sticky top-0 z-30 flex h-16 items-center gap-4 border-b px-4 lg:px-6">
+    <header className="bg-sidebar text-sidebar-foreground border-sidebar-border sticky top-0 z-30 flex h-16 items-center gap-4 border-b px-4 lg:px-6">
       {/* Mobile menu */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetTrigger asChild>
-          <Button variant="outline" size="icon" className="lg:hidden">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-white lg:hidden"
+          >
             <Menu className="size-5" />
             <span className="sr-only">メニューを開く</span>
           </Button>
@@ -54,7 +58,7 @@ export function Header() {
         >
           <SheetHeader className="border-sidebar-border border-b">
             <SheetTitle className="flex items-center gap-3 text-white">
-              <div className="flex size-8 items-center justify-center rounded-full border-2 border-white/80">
+              <div className="flex size-8 items-center justify-center rounded-none border-2 border-white/80">
                 <Hexagon className="size-4" />
               </div>
               {appName}
@@ -67,14 +71,14 @@ export function Header() {
       {/* Page title */}
       <div className="flex items-center gap-2">
         {currentPage?.icon && (
-          <currentPage.icon className="text-primary size-5" />
+          <currentPage.icon className="size-5 text-white" />
         )}
         <div className="flex flex-col">
-          <h1 className="text-base leading-tight font-semibold lg:text-lg">
+          <h1 className="text-base leading-tight font-semibold text-white lg:text-lg">
             {currentPage?.title ?? appName}
           </h1>
           {currentPage?.description && (
-            <p className="text-muted-foreground hidden text-xs sm:block">
+            <p className="text-sidebar-foreground/70 hidden text-xs sm:block">
               {currentPage.description}
             </p>
           )}
@@ -86,7 +90,7 @@ export function Header() {
         {["カスタムメニュー", "カスタムメニュー"].map((label, i) => (
           <button
             key={i}
-            className="text-muted-foreground hover:bg-accent hover:text-foreground flex items-center gap-1 rounded-md px-3 py-1.5 text-sm transition-colors"
+            className="text-sidebar-foreground/80 hover:bg-sidebar-accent flex items-center gap-1 px-3 py-1.5 text-sm transition-colors hover:text-white"
           >
             {label}
             <ChevronDown className="size-3.5" />
@@ -96,19 +100,23 @@ export function Header() {
 
       <div className="ml-auto flex items-center gap-2">
         <div className="relative hidden md:block">
-          <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
+          <Search className="text-sidebar-foreground/60 absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
           <Input
             type="search"
             placeholder="検索..."
-            className="w-48 pl-8 lg:w-64"
+            className="border-sidebar-border placeholder:text-sidebar-foreground/50 w-48 bg-white/10 pl-8 text-white lg:w-64"
           />
         </div>
 
-        <Button variant="outline" size="icon" className="relative">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-sidebar-foreground hover:bg-sidebar-accent relative hover:text-white"
+        >
           <Bell className="size-5" />
           <Badge
             variant="destructive"
-            className="absolute -top-1.5 -right-1.5 size-4 rounded-full p-0 text-[10px]"
+            className="absolute -top-1.5 -right-1.5 size-4 rounded-none p-0 text-[10px]"
           >
             3
           </Badge>
@@ -117,7 +125,10 @@ export function Header() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative size-9 rounded-full">
+            <Button
+              variant="ghost"
+              className="hover:bg-sidebar-accent relative size-9 rounded-none"
+            >
               <Avatar>
                 <AvatarFallback className="bg-primary text-primary-foreground">
                   田中

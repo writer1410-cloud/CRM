@@ -55,7 +55,7 @@ export function SidebarNav({ onNavigate }: SidebarNavProps) {
                 >
                   <span
                     className={cn(
-                      "flex size-6 shrink-0 items-center justify-center rounded-full border",
+                      "flex size-6 shrink-0 items-center justify-center rounded-none border",
                       isActive
                         ? "border-white/40 bg-white/10"
                         : "border-white/15 bg-white/5"
@@ -65,7 +65,7 @@ export function SidebarNav({ onNavigate }: SidebarNavProps) {
                   </span>
                   <span className="flex-1 truncate">{item.title}</span>
                   {badge !== undefined && badge > 0 && (
-                    <span className="bg-brand-red flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold text-white">
+                    <span className="bg-brand-red flex h-5 min-w-5 items-center justify-center rounded-none px-1.5 text-xs font-semibold text-white">
                       {badge}
                     </span>
                   )}
