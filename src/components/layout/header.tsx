@@ -2,7 +2,15 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { Bell, ChevronDown, Hexagon, Menu, Search } from "lucide-react";
+import {
+  Bell,
+  ChevronDown,
+  Hexagon,
+  Menu,
+  Search,
+  AlertTriangle,
+  CalendarX,
+} from "lucide-react";
 
 import { appName, navItems } from "@/lib/nav";
 import { logoutAction } from "@/app/actions/auth";
@@ -30,8 +38,20 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { SidebarNav } from "./sidebar-nav";
 
-export function Header() {
+export interface Notification {
+  id: string;
+  type: "task" | "stock";
+  message: string;
+  href: string;
+}
+
+interface HeaderProps {
+  notifications?: Notification[];
+}
+
+export function Header({ notifications = [] }: HeaderProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const pathname = usePathname();
 
   const currentPage = navItems.find(
@@ -108,20 +128,48 @@ export function Header() {
           />
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-sidebar-foreground hover:bg-sidebar-accent relative hover:text-white"
-        >
-          <Bell className="size-5" />
-          <Badge
-            variant="destructive"
-            className="absolute -top-1.5 -right-1.5 size-4 rounded-none p-0 text-[10px]"
-          >
-            3
-          </Badge>
-          <span className="sr-only">通知</span>
-        </Button>
+        <DropdownMenu open={notifOpen} onOpenChange={setNotifOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-sidebar-foreground hover:bg-sidebar-accent relative hover:text-white"
+            >
+              <Bell className="size-5" />
+              {notifications.length > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="absolute -top-1.5 -right-1.5 size-4 rounded-none p-0 text-[10px]"
+                >
+                  {notifications.length}
+                </Badge>
+              )}
+              <span className="sr-only">通知</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80">
+            <DropdownMenuLabel>通知</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {notifications.length === 0 ? (
+              <div className="text-muted-foreground px-3 py-4 text-center text-sm">
+                通知はありません
+              </div>
+            ) : (
+              notifications.map((n) => (
+                <DropdownMenuItem key={n.id} asChild>
+                  <a href={n.href} className="flex items-start gap-2 py-2">
+                    {n.type === "task" ? (
+                      <CalendarX className="text-brand-red mt-0.5 size-4 shrink-0" />
+                    ) : (
+                      <AlertTriangle className="text-brand-orange mt-0.5 size-4 shrink-0" />
+                    )}
+                    <span className="text-sm leading-tight">{n.message}</span>
+                  </a>
+                </DropdownMenuItem>
+              ))
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

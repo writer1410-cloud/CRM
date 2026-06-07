@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useOptimistic, useMemo, useState, useTransition } from "react";
 import { AlertTriangle, Search } from "lucide-react";
 
 import { cn, formatCurrency, formatNumber } from "@/lib/utils";
@@ -28,6 +28,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { EditProductDialog, type EditProductValues } from "./edit-product-dialog";
+import { CsvImportDialog } from "@/components/common/csv-import-dialog";
+import { updateProductAction, importProductsFromCSVAction } from "@/app/actions/inventory";
 
 type StockLevel = "out" | "low" | "ok";
 
@@ -49,6 +52,21 @@ function StockBadge({ level }: { level: StockLevel }) {
   return <Badge variant={variant}>{stockLevelLabels[level]}</Badge>;
 }
 
+type OptimisticAction =
+  | { type: "update"; id: string; values: EditProductValues }
+  | { type: "import"; products: Product[] };
+
+function productsReducer(state: Product[], action: OptimisticAction): Product[] {
+  switch (action.type) {
+    case "update":
+      return state.map((p) =>
+        p.id === action.id ? { ...p, ...action.values } : p
+      );
+    case "import":
+      return [...action.products, ...state];
+  }
+}
+
 interface InventoryViewProps {
   initialProducts: Product[];
 }
@@ -56,14 +74,19 @@ interface InventoryViewProps {
 export function InventoryView({ initialProducts }: InventoryViewProps) {
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [isPending, startTransition] = useTransition();
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [importSuccess, setImportSuccess] = useState<string | null>(null);
+
+  const [optimisticProducts, dispatch] = useOptimistic(initialProducts, productsReducer);
 
   const categories = useMemo(
-    () => Array.from(new Set(initialProducts.map((p) => p.category))),
-    [initialProducts]
+    () => Array.from(new Set(optimisticProducts.map((p) => p.category))),
+    [optimisticProducts]
   );
 
   const filtered = useMemo(() => {
-    return initialProducts.filter((p) => {
+    return optimisticProducts.filter((p) => {
       const q = query.toLowerCase();
       const matchesQuery =
         p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q);
@@ -71,7 +94,7 @@ export function InventoryView({ initialProducts }: InventoryViewProps) {
         categoryFilter === "all" || p.category === categoryFilter;
       return matchesQuery && matchesCategory;
     });
-  }, [initialProducts, query, categoryFilter]);
+  }, [optimisticProducts, query, categoryFilter]);
 
   const totalCount = filtered.length;
   const lowStockCount = filtered.filter((p) => stockLevel(p) !== "ok").length;
@@ -79,6 +102,46 @@ export function InventoryView({ initialProducts }: InventoryViewProps) {
     (sum, p) => sum + p.stock * p.price,
     0
   );
+
+  function handleEdit(product: Product, values: EditProductValues) {
+    setSaveError(null);
+    setImportSuccess(null);
+    startTransition(async () => {
+      dispatch({ type: "update", id: product.id, values });
+      const result = await updateProductAction(product.id, values);
+      if (result.error) setSaveError(result.error);
+    });
+  }
+
+  function handleImport(rows: unknown[]) {
+    const typedRows = rows as Array<{
+      name: string;
+      sku: string;
+      stock: string;
+      threshold: string;
+      price: string;
+      category: string;
+    }>;
+
+    const optimisticNewProducts: Product[] = typedRows.map((row, i) => ({
+      id: `PRD-TMP-${Date.now()}-${i}`,
+      name: row.name || "不明",
+      sku: row.sku || `SKU-TMP-${i}`,
+      stock: Number(row.stock) || 0,
+      threshold: Number(row.threshold) || 0,
+      price: Number(row.price) || 0,
+      category: row.category || "その他",
+    }));
+
+    setSaveError(null);
+    setImportSuccess(null);
+    startTransition(async () => {
+      dispatch({ type: "import", products: optimisticNewProducts });
+      const result = await importProductsFromCSVAction(typedRows);
+      if (result.error) setSaveError(result.error);
+      else setImportSuccess(`${result.imported}件の商品をインポートしました。`);
+    });
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -117,6 +180,17 @@ export function InventoryView({ initialProducts }: InventoryViewProps) {
         </Card>
       </div>
 
+      {saveError && (
+        <div className="bg-destructive/10 text-destructive border-destructive/30 rounded-none border px-4 py-3 text-sm">
+          ⚠️ {saveError}
+        </div>
+      )}
+      {importSuccess && (
+        <div className="bg-brand-green/10 text-brand-green border-brand-green/30 rounded-none border px-4 py-3 text-sm">
+          ✓ {importSuccess}
+        </div>
+      )}
+
       {/* Table card */}
       <Card className="gap-0 py-0">
         <CardHeader className="flex flex-col gap-3 border-b py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -144,6 +218,7 @@ export function InventoryView({ initialProducts }: InventoryViewProps) {
                 ))}
               </SelectContent>
             </Select>
+            <CsvImportDialog entity="inventory" onImport={handleImport} disabled={isPending} />
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -156,7 +231,8 @@ export function InventoryView({ initialProducts }: InventoryViewProps) {
                 <TableHead className="text-right">在庫数</TableHead>
                 <TableHead className="text-right">しきい値</TableHead>
                 <TableHead className="text-right">単価</TableHead>
-                <TableHead className="pr-5">在庫状況</TableHead>
+                <TableHead>在庫状況</TableHead>
+                <TableHead className="pr-5 w-10"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -189,8 +265,15 @@ export function InventoryView({ initialProducts }: InventoryViewProps) {
                     <TableCell className="text-right tabular-nums">
                       {formatCurrency(product.price)}
                     </TableCell>
-                    <TableCell className="pr-5">
+                    <TableCell>
                       <StockBadge level={level} />
+                    </TableCell>
+                    <TableCell className="pr-5">
+                      <EditProductDialog
+                        product={product}
+                        onSave={(values) => handleEdit(product, values)}
+                        disabled={isPending}
+                      />
                     </TableCell>
                   </TableRow>
                 );
@@ -198,7 +281,7 @@ export function InventoryView({ initialProducts }: InventoryViewProps) {
               {filtered.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={8}
                     className="text-muted-foreground py-12 text-center"
                   >
                     条件に一致する商品がありません。

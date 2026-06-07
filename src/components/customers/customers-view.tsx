@@ -32,7 +32,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { NewCustomerDialog, type NewCustomerValues } from "./new-customer-dialog";
-import { createCustomerAction } from "@/app/actions/customers";
+import { EditCustomerDialog, type EditCustomerValues } from "./edit-customer-dialog";
+import { CsvImportDialog } from "@/components/common/csv-import-dialog";
+import {
+  createCustomerAction,
+  updateCustomerAction,
+  importCustomersFromCSVAction,
+} from "@/app/actions/customers";
 
 const statusDot: Record<CustomerStatus, string> = {
   active: "bg-brand-green",
@@ -54,16 +60,32 @@ interface CustomersViewProps {
   initialCustomers: Customer[];
 }
 
+type OptimisticAction =
+  | { type: "create"; customer: Customer }
+  | { type: "update"; id: string; values: EditCustomerValues }
+  | { type: "import"; customers: Customer[] };
+
+function customersReducer(state: Customer[], action: OptimisticAction): Customer[] {
+  switch (action.type) {
+    case "create":
+      return [action.customer, ...state];
+    case "update":
+      return state.map((c) =>
+        c.id === action.id ? { ...c, ...action.values } : c
+      );
+    case "import":
+      return [...action.customers, ...state];
+  }
+}
+
 export function CustomersView({ initialCustomers }: CustomersViewProps) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<CustomerStatus | "all">("all");
   const [isPending, startTransition] = useTransition();
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [importSuccess, setImportSuccess] = useState<string | null>(null);
 
-  const [optimisticCustomers, addOptimisticCustomer] = useOptimistic(
-    initialCustomers,
-    (state: Customer[], newCustomer: Customer) => [newCustomer, ...state]
-  );
+  const [optimisticCustomers, dispatch] = useOptimistic(initialCustomers, customersReducer);
 
   function handleCreate(values: NewCustomerValues) {
     const maxNumber = optimisticCustomers.reduce((max, c) => {
@@ -78,10 +100,51 @@ export function CustomersView({ initialCustomers }: CustomersViewProps) {
     };
 
     setSaveError(null);
+    setImportSuccess(null);
     startTransition(async () => {
-      addOptimisticCustomer(optimistic);
+      dispatch({ type: "create", customer: optimistic });
       const result = await createCustomerAction(values);
       if (result.error) setSaveError(result.error);
+    });
+  }
+
+  function handleEdit(customer: Customer, values: EditCustomerValues) {
+    setSaveError(null);
+    setImportSuccess(null);
+    startTransition(async () => {
+      dispatch({ type: "update", id: customer.id, values });
+      const result = await updateCustomerAction(customer.id, values);
+      if (result.error) setSaveError(result.error);
+    });
+  }
+
+  function handleImport(rows: unknown[]) {
+    const typedRows = rows as Array<{
+      name: string;
+      contactName: string;
+      email: string;
+      phone: string;
+      status: string;
+    }>;
+
+    const optimisticNewCustomers: Customer[] = typedRows.map((row, i) => ({
+      id: `CUS-TMP-${Date.now()}-${i}`,
+      name: row.name || "不明",
+      contactName: row.contactName || "",
+      email: row.email || "",
+      phone: row.phone || "",
+      status: (row.status || "lead") as CustomerStatus,
+      totalSpent: 0,
+      lastContact: new Date().toISOString().slice(0, 10),
+    }));
+
+    setSaveError(null);
+    setImportSuccess(null);
+    startTransition(async () => {
+      dispatch({ type: "import", customers: optimisticNewCustomers });
+      const result = await importCustomersFromCSVAction(typedRows);
+      if (result.error) setSaveError(result.error);
+      else setImportSuccess(`${result.imported}件の顧客をインポートしました。`);
     });
   }
 
@@ -153,6 +216,11 @@ export function CustomersView({ initialCustomers }: CustomersViewProps) {
           ⚠️ {saveError}
         </div>
       )}
+      {importSuccess && (
+        <div className="bg-brand-green/10 text-brand-green border-brand-green/30 rounded-none border px-4 py-3 text-sm">
+          ✓ {importSuccess}
+        </div>
+      )}
 
       {/* Table card */}
       <Card className="gap-0 py-0">
@@ -184,6 +252,7 @@ export function CustomersView({ initialCustomers }: CustomersViewProps) {
                 ))}
               </SelectContent>
             </Select>
+            <CsvImportDialog entity="customers" onImport={handleImport} disabled={isPending} />
             <NewCustomerDialog onCreate={handleCreate} disabled={isPending} />
           </div>
         </CardHeader>
@@ -197,7 +266,8 @@ export function CustomersView({ initialCustomers }: CustomersViewProps) {
                 <TableHead>連絡先</TableHead>
                 <TableHead>ステータス</TableHead>
                 <TableHead className="text-right">累計売上</TableHead>
-                <TableHead className="pr-5">最終連絡</TableHead>
+                <TableHead>最終連絡</TableHead>
+                <TableHead className="pr-5 w-10"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -232,15 +302,22 @@ export function CustomersView({ initialCustomers }: CustomersViewProps) {
                       <span className="text-muted-foreground">—</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-muted-foreground pr-5">
+                  <TableCell className="text-muted-foreground">
                     {formatDate(customer.lastContact)}
+                  </TableCell>
+                  <TableCell className="pr-5">
+                    <EditCustomerDialog
+                      customer={customer}
+                      onSave={(values) => handleEdit(customer, values)}
+                      disabled={isPending}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
               {filtered.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={8}
                     className="text-muted-foreground py-12 text-center"
                   >
                     条件に一致する顧客がいません。

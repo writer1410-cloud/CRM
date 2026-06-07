@@ -13,9 +13,14 @@ import {
 } from "@/lib/mock-data";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { updateTaskStatusAction } from "@/app/actions/tasks";
+import {
+  updateTaskStatusAction,
+  createTaskAction,
+  updateTaskAction,
+} from "@/app/actions/tasks";
+import { TaskDialog, type TaskValues } from "./task-dialog";
 
-const TODAY = "2026-06-06";
+const TODAY = "2026-06-07";
 
 const columns: TaskStatus[] = ["todo", "in_progress", "done"];
 
@@ -41,9 +46,13 @@ function initials(name: string) {
 function TaskCard({
   task,
   onDragStart,
+  onEdit,
+  isPending,
 }: {
   task: Task;
   onDragStart: (id: string) => void;
+  onEdit: (task: Task, values: TaskValues) => void;
+  isPending: boolean;
 }) {
   const isOverdue = task.status !== "done" && task.dueDate < TODAY;
 
@@ -57,7 +66,15 @@ function TaskCard({
         <Badge variant={priorityVariant[task.priority]}>
           優先度: {taskPriorityLabels[task.priority]}
         </Badge>
-        <GripVertical className="text-muted-foreground/40 size-4 shrink-0" />
+        <div className="flex items-center gap-1">
+          <TaskDialog
+            mode="edit"
+            task={task}
+            onSave={(values) => onEdit(task, values)}
+            disabled={isPending}
+          />
+          <GripVertical className="text-muted-foreground/40 size-4 shrink-0" />
+        </div>
       </div>
 
       <p className="text-sm leading-snug font-semibold">{task.title}</p>
@@ -88,6 +105,26 @@ function TaskCard({
   );
 }
 
+type OptimisticAction =
+  | { type: "status"; id: string; status: TaskStatus }
+  | { type: "update"; id: string; values: TaskValues }
+  | { type: "create"; task: Task };
+
+function tasksReducer(state: Task[], action: OptimisticAction): Task[] {
+  switch (action.type) {
+    case "status":
+      return state.map((t) =>
+        t.id === action.id ? { ...t, status: action.status } : t
+      );
+    case "update":
+      return state.map((t) =>
+        t.id === action.id ? { ...t, ...action.values } : t
+      );
+    case "create":
+      return [action.task, ...state];
+  }
+}
+
 interface TasksViewProps {
   initialTasks: Task[];
 }
@@ -95,16 +132,10 @@ interface TasksViewProps {
 export function TasksView({ initialTasks }: TasksViewProps) {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<TaskStatus | null>(null);
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const [optimisticTasks, updateOptimisticTask] = useOptimistic(
-    initialTasks,
-    (
-      state: Task[],
-      { id, status }: { id: string; status: TaskStatus }
-    ) => state.map((t) => (t.id === id ? { ...t, status } : t))
-  );
+  const [optimisticTasks, dispatch] = useOptimistic(initialTasks, tasksReducer);
 
   function handleDrop(status: TaskStatus) {
     if (!draggedId) return;
@@ -115,14 +146,46 @@ export function TasksView({ initialTasks }: TasksViewProps) {
 
     setSaveError(null);
     startTransition(async () => {
-      updateOptimisticTask({ id, status });
+      dispatch({ type: "status", id, status });
       const result = await updateTaskStatusAction(id, status);
+      if (result.error) setSaveError(result.error);
+    });
+  }
+
+  function handleCreate(values: TaskValues) {
+    const maxNumber = optimisticTasks.reduce((max, t) => {
+      const n = Number(t.id.replace(/\D/g, ""));
+      return Number.isNaN(n) ? max : Math.max(max, n);
+    }, 9);
+    const optimisticId = `TSK-${String(maxNumber + 1).padStart(2, "0")}`;
+    const optimistic: Task = { id: optimisticId, ...values };
+
+    setSaveError(null);
+    startTransition(async () => {
+      dispatch({ type: "create", task: optimistic });
+      const result = await createTaskAction(values);
+      if (result.error) setSaveError(result.error);
+    });
+  }
+
+  function handleEdit(task: Task, values: TaskValues) {
+    setSaveError(null);
+    startTransition(async () => {
+      dispatch({ type: "update", id: task.id, values });
+      const result = await updateTaskAction(task.id, values);
       if (result.error) setSaveError(result.error);
     });
   }
 
   return (
     <div className="flex flex-col gap-5">
+      <div className="flex items-center justify-between">
+        <p className="text-muted-foreground text-sm">
+          タスクをドラッグしてステータスを変更できます。
+        </p>
+        <TaskDialog mode="create" onSave={handleCreate} disabled={isPending} />
+      </div>
+
       {saveError && (
         <div className="bg-destructive/10 text-destructive border-destructive/30 rounded-none border px-4 py-3 text-sm">
           ⚠️ {saveError}
@@ -165,6 +228,8 @@ export function TasksView({ initialTasks }: TasksViewProps) {
                     key={task.id}
                     task={task}
                     onDragStart={setDraggedId}
+                    onEdit={handleEdit}
+                    isPending={isPending}
                   />
                 ))}
                 {columnTasks.length === 0 && (

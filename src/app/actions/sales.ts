@@ -37,3 +37,67 @@ export async function createSaleAction(values: {
     return { error: "DB保存に失敗しました。Vercel の DATABASE_URL を確認してください。" };
   }
 }
+
+export async function updateSaleAction(
+  id: string,
+  values: {
+    date: string;
+    customerName: string;
+    amount: number;
+    status: SaleStatus;
+  }
+): Promise<{ error?: string }> {
+  try {
+    await prisma.sale.update({
+      where: { id },
+      data: {
+        date: new Date(values.date),
+        customerName: values.customerName,
+        amount: values.amount,
+        status: values.status as Parameters<
+          typeof prisma.sale.update
+        >[0]["data"]["status"],
+      },
+    });
+
+    revalidatePath("/sales");
+    return {};
+  } catch (e) {
+    console.error("[updateSaleAction]", e);
+    return { error: "DB保存に失敗しました。Vercel の DATABASE_URL を確認してください。" };
+  }
+}
+
+export async function importSalesFromCSVAction(
+  rows: Array<{ date: string; customerName: string; amount: string | number; status: string }>
+): Promise<{ imported: number; error?: string }> {
+  try {
+    let imported = 0;
+    for (const row of rows) {
+      const latest = await prisma.sale.findFirst({ orderBy: { id: "desc" } });
+      const maxNum = latest
+        ? parseInt(latest.id.replace(/\D/g, ""), 10)
+        : 1042;
+      const newId = `INV-${isNaN(maxNum) ? 1043 : maxNum + 1}`;
+
+      await prisma.sale.create({
+        data: {
+          id: newId,
+          date: new Date(row.date),
+          customerName: row.customerName,
+          amount: Number(row.amount),
+          status: (row.status || "pending") as Parameters<
+            typeof prisma.sale.create
+          >[0]["data"]["status"],
+        },
+      });
+      imported++;
+    }
+
+    revalidatePath("/sales");
+    return { imported };
+  } catch (e) {
+    console.error("[importSalesFromCSVAction]", e);
+    return { imported: 0, error: "CSVインポートに失敗しました。" };
+  }
+}

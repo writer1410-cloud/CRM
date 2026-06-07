@@ -32,7 +32,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { NewSaleDialog, type NewSaleValues } from "./new-sale-dialog";
-import { createSaleAction } from "@/app/actions/sales";
+import { EditSaleDialog, type EditSaleValues } from "./edit-sale-dialog";
+import { CsvImportDialog } from "@/components/common/csv-import-dialog";
+import {
+  createSaleAction,
+  updateSaleAction,
+  importSalesFromCSVAction,
+} from "@/app/actions/sales";
 
 const statusDot: Record<SaleStatus, string> = {
   paid: "bg-brand-green",
@@ -50,6 +56,24 @@ function StatusBadge({ status }: { status: SaleStatus }) {
   );
 }
 
+type OptimisticAction =
+  | { type: "create"; sale: Sale }
+  | { type: "update"; id: string; values: EditSaleValues }
+  | { type: "import"; sales: Sale[] };
+
+function salesReducer(state: Sale[], action: OptimisticAction): Sale[] {
+  switch (action.type) {
+    case "create":
+      return [action.sale, ...state];
+    case "update":
+      return state.map((s) =>
+        s.id === action.id ? { ...s, ...action.values } : s
+      );
+    case "import":
+      return [...action.sales, ...state];
+  }
+}
+
 interface SalesViewProps {
   initialSales: Sale[];
 }
@@ -59,11 +83,9 @@ export function SalesView({ initialSales }: SalesViewProps) {
   const [statusFilter, setStatusFilter] = useState<SaleStatus | "all">("all");
   const [isPending, startTransition] = useTransition();
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [importSuccess, setImportSuccess] = useState<string | null>(null);
 
-  const [optimisticSales, addOptimisticSale] = useOptimistic(
-    initialSales,
-    (state: Sale[], newSale: Sale) => [newSale, ...state]
-  );
+  const [optimisticSales, dispatch] = useOptimistic(initialSales, salesReducer);
 
   function handleCreate(values: NewSaleValues) {
     const maxNumber = optimisticSales.reduce((max, sale) => {
@@ -72,11 +94,48 @@ export function SalesView({ initialSales }: SalesViewProps) {
     }, 1000);
     const optimistic: Sale = { id: `INV-${maxNumber + 1}`, ...values };
     setSaveError(null);
+    setImportSuccess(null);
 
     startTransition(async () => {
-      addOptimisticSale(optimistic);
+      dispatch({ type: "create", sale: optimistic });
       const result = await createSaleAction(values);
       if (result.error) setSaveError(result.error);
+    });
+  }
+
+  function handleEdit(sale: Sale, values: EditSaleValues) {
+    setSaveError(null);
+    setImportSuccess(null);
+    startTransition(async () => {
+      dispatch({ type: "update", id: sale.id, values });
+      const result = await updateSaleAction(sale.id, values);
+      if (result.error) setSaveError(result.error);
+    });
+  }
+
+  function handleImport(rows: unknown[]) {
+    const typedRows = rows as Array<{
+      date: string;
+      customerName: string;
+      amount: string;
+      status: string;
+    }>;
+
+    const optimisticNewSales: Sale[] = typedRows.map((row, i) => ({
+      id: `INV-TMP-${Date.now()}-${i}`,
+      date: row.date || new Date().toISOString().slice(0, 10),
+      customerName: row.customerName || "不明",
+      amount: Number(row.amount) || 0,
+      status: (row.status || "pending") as SaleStatus,
+    }));
+
+    setSaveError(null);
+    setImportSuccess(null);
+    startTransition(async () => {
+      dispatch({ type: "import", sales: optimisticNewSales });
+      const result = await importSalesFromCSVAction(typedRows);
+      if (result.error) setSaveError(result.error);
+      else setImportSuccess(`${result.imported}件の売上をインポートしました。`);
     });
   }
 
@@ -140,6 +199,11 @@ export function SalesView({ initialSales }: SalesViewProps) {
           ⚠️ {saveError}
         </div>
       )}
+      {importSuccess && (
+        <div className="bg-brand-green/10 text-brand-green border-brand-green/30 rounded-none border px-4 py-3 text-sm">
+          ✓ {importSuccess}
+        </div>
+      )}
 
       {/* Table card */}
       <Card className="gap-0 py-0">
@@ -171,6 +235,7 @@ export function SalesView({ initialSales }: SalesViewProps) {
                 ))}
               </SelectContent>
             </Select>
+            <CsvImportDialog entity="sales" onImport={handleImport} disabled={isPending} />
             <NewSaleDialog onCreate={handleCreate} disabled={isPending} />
           </div>
         </CardHeader>
@@ -182,7 +247,8 @@ export function SalesView({ initialSales }: SalesViewProps) {
                 <TableHead>日付</TableHead>
                 <TableHead>顧客名</TableHead>
                 <TableHead className="text-right">金額</TableHead>
-                <TableHead className="pr-5">ステータス</TableHead>
+                <TableHead>ステータス</TableHead>
+                <TableHead className="pr-5 w-10"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -200,15 +266,22 @@ export function SalesView({ initialSales }: SalesViewProps) {
                   <TableCell className="text-right font-medium tabular-nums">
                     {formatCurrency(sale.amount)}
                   </TableCell>
-                  <TableCell className="pr-5">
+                  <TableCell>
                     <StatusBadge status={sale.status} />
+                  </TableCell>
+                  <TableCell className="pr-5">
+                    <EditSaleDialog
+                      sale={sale}
+                      onSave={(values) => handleEdit(sale, values)}
+                      disabled={isPending}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
               {filtered.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={5}
+                    colSpan={6}
                     className="text-muted-foreground py-12 text-center"
                   >
                     条件に一致する売上がありません。
