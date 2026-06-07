@@ -58,6 +58,7 @@ export function CustomersView({ initialCustomers }: CustomersViewProps) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<CustomerStatus | "all">("all");
   const [isPending, startTransition] = useTransition();
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const [optimisticCustomers, addOptimisticCustomer] = useOptimistic(
     initialCustomers,
@@ -76,9 +77,11 @@ export function CustomersView({ initialCustomers }: CustomersViewProps) {
       ...values,
     };
 
+    setSaveError(null);
     startTransition(async () => {
       addOptimisticCustomer(optimistic);
-      await createCustomerAction(values);
+      const result = await createCustomerAction(values);
+      if (result.error) setSaveError(result.error);
     });
   }
 
@@ -144,6 +147,12 @@ export function CustomersView({ initialCustomers }: CustomersViewProps) {
           </CardContent>
         </Card>
       </div>
+
+      {saveError && (
+        <div className="bg-destructive/10 text-destructive border-destructive/30 rounded-none border px-4 py-3 text-sm">
+          ⚠️ {saveError}
+        </div>
+      )}
 
       {/* Table card */}
       <Card className="gap-0 py-0">

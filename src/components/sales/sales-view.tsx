@@ -58,8 +58,8 @@ export function SalesView({ initialSales }: SalesViewProps) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<SaleStatus | "all">("all");
   const [isPending, startTransition] = useTransition();
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  // useOptimistic syncs automatically with initialSales when server re-renders
   const [optimisticSales, addOptimisticSale] = useOptimistic(
     initialSales,
     (state: Sale[], newSale: Sale) => [newSale, ...state]
@@ -71,10 +71,12 @@ export function SalesView({ initialSales }: SalesViewProps) {
       return Number.isNaN(n) ? max : Math.max(max, n);
     }, 1000);
     const optimistic: Sale = { id: `INV-${maxNumber + 1}`, ...values };
+    setSaveError(null);
 
     startTransition(async () => {
       addOptimisticSale(optimistic);
-      await createSaleAction(values);
+      const result = await createSaleAction(values);
+      if (result.error) setSaveError(result.error);
     });
   }
 
@@ -132,6 +134,12 @@ export function SalesView({ initialSales }: SalesViewProps) {
           </CardContent>
         </Card>
       </div>
+
+      {saveError && (
+        <div className="bg-destructive/10 text-destructive border-destructive/30 rounded-none border px-4 py-3 text-sm">
+          ⚠️ {saveError}
+        </div>
+      )}
 
       {/* Table card */}
       <Card className="gap-0 py-0">

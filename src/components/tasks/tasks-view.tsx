@@ -96,6 +96,7 @@ export function TasksView({ initialTasks }: TasksViewProps) {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<TaskStatus | null>(null);
   const [, startTransition] = useTransition();
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const [optimisticTasks, updateOptimisticTask] = useOptimistic(
     initialTasks,
@@ -112,14 +113,21 @@ export function TasksView({ initialTasks }: TasksViewProps) {
     setDraggedId(null);
     setDragOverColumn(null);
 
+    setSaveError(null);
     startTransition(async () => {
       updateOptimisticTask({ id, status });
-      await updateTaskStatusAction(id, status);
+      const result = await updateTaskStatusAction(id, status);
+      if (result.error) setSaveError(result.error);
     });
   }
 
   return (
     <div className="flex flex-col gap-5">
+      {saveError && (
+        <div className="bg-destructive/10 text-destructive border-destructive/30 rounded-none border px-4 py-3 text-sm">
+          ⚠️ {saveError}
+        </div>
+      )}
       <div className="grid items-start gap-4 lg:grid-cols-3">
         {columns.map((status) => {
           const columnTasks = optimisticTasks.filter(
