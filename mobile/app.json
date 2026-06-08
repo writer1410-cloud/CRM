@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "雑談ネタ AI",
+    "slug": "smalltalk-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "smalltalk",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.example.smalltalk"
+    },
+    "android": {
+      "package": "com.example.smalltalk",
+      "adaptiveIcon": {
+        "backgroundColor": "#0EA5E9"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "supabaseUrl": "https://YOUR-PROJECT.supabase.co",
+      "supabaseAnonKey": "YOUR_SUPABASE_ANON_KEY",
+      "revenueCatApiKeyIos": "appl_YOUR_IOS_KEY",
+      "revenueCatApiKeyAndroid": "goog_YOUR_ANDROID_KEY"
+    }
+  }
+}
